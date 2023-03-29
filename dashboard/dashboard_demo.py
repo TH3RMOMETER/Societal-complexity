@@ -4,77 +4,24 @@
 #
 
 
-from bokeh.models import LinearColorMapper, ColumnDataSource, Slider, ColorBar, SingleIntervalTicker, RangeSlider, Range1d, FactorRange, CustomJS
-from bokeh.io import curdoc
-from bokeh.plotting import figure, show
-from bokeh.layouts import column, row
-from bokeh.transform import cumsum, transform
-from bokeh.palettes import Category20c
-
-
 from datetime import date
-from math import pi
-import pandas as pd
 from functools import partial
+from math import pi
+
+import numpy as np
+import pandas as pd
+from bokeh.io import curdoc
+from bokeh.layouts import column, row
+from bokeh.models import (ColorBar, ColumnDataSource, CustomJS, FactorRange,
+                          LinearColorMapper, Label, LegendItem,
+                          SingleIntervalTicker, Slider)
+from bokeh.palettes import Category20c
+from bokeh.plotting import figure, show
+from bokeh.transform import cumsum, transform
 
 from helper import preprocess
 
-##### Weather #######
 
-weather = preprocess(
-    r'/Users/yvette/Coding/SCDD/Societal-complexity/dashboard/dataset_with_preds.parquet')
-
-weather_source = ColumnDataSource(data=dict(weather))
-
-min, max = 0, 84
-#range_slider = RangeSlider(value=(min, max), start=0, end=len((weather)), width=1200)
-range_slider = Slider(
-    start=min,
-    end=(len(weather) - 84),
-    value=max,
-    step=1,
-    title='Startday from which 7 days ahead will be predicted',
-    width=1200)
-
-plot = figure(width=1200, x_range=(weather.time.min(), weather.time.loc[84]), title="Weather forecast",
-              toolbar_location=None, tools="")
-
-def slided(attrname, old, new):
-    global weather, weather_source, range_slider, plot, min, max
-
-    start_day = range_slider.value
-    weather_data = weather.query('@start_day <= index <= @start_day + 84')
-    weather_source.data = weather_data
-    plot.x_range.start = weather_data.time.min()
-    plot.x_range.end = weather_data.time.max()
-
-# range_slider.js_on_change('value', callback)
-range_slider.on_change('value', slided)
-
-# color_mapper = np.array([ [r, g, 150] for r, g in zip(50 + 2 * x, 30 + 2 * y) ], dtype="uint8")
-color_mapper = LinearColorMapper(
-    palette='Turbo256', low=weather.tsurf_pred.min(), high=weather.tsurf_pred.max())
-
-    
-# Plot
-plot.scatter('time',
-             'dustcol_pred',
-             radius='norm_wind',
-             alpha=0.8,
-             source=weather_source,
-             fill_color={'field': 'tsurf_pred', 'transform': color_mapper}
-             )
-
-color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None,
-                     ticker=SingleIntervalTicker(interval=10))
-
-plot.add_layout(color_bar, 'right')
-
-plot.xaxis.axis_label = 'Marsian Days'
-plot.yaxis.axis_label = 'Predicted Dustcolumn'
-
-
-##### Weather end #########
 
 data = pd.DataFrame({
     'device': ['lighting', 'heating', 'kitchen', 'water', 'bathroom', 'free'],
@@ -86,15 +33,6 @@ data = pd.DataFrame({
 data['angle'] = data['use']/data['use'].sum() * 2 * pi  # Wedges
 data['color'] = Category20c[len(data)]                  # Colors
 data['value'] = 100 * (data['use']/data['use'].sum())   # Actual Values in kW/h
-
-# color_dict = {
-#     'lighting': Category20c[len(data)][0],
-#     'heating': Category20c[len(data)][1],
-#     'kitchen': Category20c[len(data)][2],
-#     'water': Category20c[len(data)][3],
-#     'bathroom': Category20c[len(data)][4],
-#     'free': Category20c[len(data)][5]
-# }
 
 source = ColumnDataSource(data=dict(data))
 
@@ -236,6 +174,80 @@ p.axis.visible = False
 p.grid.grid_line_color = None
 
 
+########################################## Weather #######
+
+weather = preprocess(
+    r'/Users/yvette/Coding/SCDD/Societal-complexity/dashboard/dataset_with_preds.parquet')
+
+weather_source = ColumnDataSource(data=dict(weather))
+
+min, max = 0, 84
+range_slider = Slider(
+    start=min,
+    end=(len(weather) - 84),
+    value=max,
+    step=1,
+    title='Startday from which 7 days ahead will be predicted',
+    width=1200)
+
+plot = figure(width=1200, x_range=(weather.time.min(), weather.time.loc[84]), title="Weather forecast",
+              toolbar_location=None, tools="")
+
+def slided(attrname, old, new):
+    global weather, weather_source, range_slider, plot, min, max
+
+    start_day = range_slider.value
+    weather_data = weather.query('@start_day <= index <= @start_day + 84')
+    weather_source.data = weather_data
+    plot.x_range.start = weather_data.time.min()
+    plot.x_range.end = weather_data.time.max()
+
+range_slider.on_change('value', slided)
+
+# color_mapper = np.array([ [r, g, 150] for r, g in zip(50 + 2 * x, 30 + 2 * y) ], dtype="uint8")
+color_mapper = LinearColorMapper(
+    palette='Turbo256', low=weather.tsurf_pred.min(), high=weather.tsurf_pred.max())
+
+
+# Plot
+plot.circle('time',
+             'dustcol_pred',
+             radius='norm_wind',
+             alpha=0.6,
+             source=weather_source,
+             fill_color={'field': 'tsurf_pred', 'transform': color_mapper},
+             )
+
+w_min, w_max = weather.wind.min(), weather.wind.max()
+wind_range = np.linspace(w_min.round(), w_max.round(), 4)
+legend = figure(width=300, x_range=(0,2), y_range=(-2,90), title="Windspeed Legend (m/s)",
+              toolbar_location=None, tools="")
+
+r = np.linspace(1,80,4)
+text1 = Label(x=1.2, y=r[0] - 2, text=f'{wind_range[0]} (m/s)')
+text2 = Label(x=1.2, y=r[1] - 2, text=f'{wind_range[1]} (m/s)')
+text3 = Label(x=1.2, y=r[2] - 2, text=f'{wind_range[2]} (m/s)')
+text4 = Label(x=1.2, y=r[3] - 2, text=f'{wind_range[3]} (m/s)')
+
+legend.circle(x=[0.5,0.5,0.5,0.5], y=r, size=((wind_range+1)*3))
+legend.axis.axis_label = None
+legend.axis.visible = False
+legend.grid.grid_line_color = None
+
+for text in [text1, text2, text3, text4]:
+    legend.add_layout(text)
+
+color_bar = ColorBar(color_mapper=color_mapper, label_standoff=12, border_line_color=None,
+                     ticker=SingleIntervalTicker(interval=10))
+
+plot.add_layout(color_bar, 'right')
+plot.xaxis.axis_label = 'Marsian Days'
+plot.yaxis.axis_label = 'Predicted Dustcolumn'
+
+
+################################### Weather end ##########
+
+
 curdoc().add_root(
     column(row(p, column(
         heating,
@@ -246,6 +258,6 @@ curdoc().add_root(
     ),
     ),
         row(range_slider),
-        row(plot)
+        row(plot, legend)
     )
 )
