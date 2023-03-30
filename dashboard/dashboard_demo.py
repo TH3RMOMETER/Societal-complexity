@@ -11,9 +11,9 @@ from math import pi
 import numpy as np
 import pandas as pd
 from bokeh.io import curdoc
-from bokeh.layouts import column, row
+from bokeh.layouts import column, row, gridplot
 from bokeh.models import (ColorBar, ColumnDataSource, CustomJS, FactorRange,
-                          LinearColorMapper, Label, LegendItem,
+                          LinearColorMapper, Label, Div,
                           SingleIntervalTicker, Slider)
 from bokeh.palettes import Category20c
 from bokeh.plotting import figure, show
@@ -38,6 +38,10 @@ source = ColumnDataSource(data=dict(data))
 
 p = figure(height=350, title="", toolbar_location=None,
            tools="hover", tooltips="@device: @value{0.2f} %", x_range=(-.5, .5))
+
+
+############ HEADER ########
+title = Div(text='<h1 style="text-align: center; padding=20px">Energy Management Dashboard</h1>')
 
 
 def update_angle(data):
@@ -113,7 +117,8 @@ heating = Slider(
     value=data.loc[data['device'] == 'heating', 'use'].values[0],
     step=1,
     title='heating',
-    bar_color='#6baed6')
+    bar_color='#6baed6',
+    height=50)
 
 # Slider for light
 lighting = Slider(
@@ -122,7 +127,8 @@ lighting = Slider(
     value=data.loc[data['device'] == 'lighting', 'use'].values[0],
     step=1,
     title='lighting',
-    bar_color='#3182bd')
+    bar_color='#3182bd',
+    height=50)
 
 kitchen = Slider(
     start=0,
@@ -130,7 +136,8 @@ kitchen = Slider(
     value=data.loc[data['device'] == 'kitchen', 'use'].values[0],
     step=1,
     title='kitchen',
-    bar_color='#9ecae1')
+    bar_color='#9ecae1',
+    height=50)
 
 water = Slider(
     start=0,
@@ -138,7 +145,8 @@ water = Slider(
     value=data.loc[data['device'] == 'water', 'use'].values[0],
     step=1,
     title='water',
-    bar_color='#c6dbef')
+    bar_color='#c6dbef',
+    height=50)
 
 bathroom = Slider(
     start=0,
@@ -146,7 +154,8 @@ bathroom = Slider(
     value=data.loc[data['device'] == 'bathroom', 'use'].values[0],
     step=1,
     title='bathroom',
-    bar_color='#e6550d')
+    bar_color='#e6550d',
+    height=50)
 
 free = Slider(
     start=0,
@@ -247,9 +256,16 @@ plot.yaxis.axis_label = 'Predicted Dustcolumn'
 
 ################################### Weather end ##########
 
+# curdoc().add_root(
+#                         gridplot(
+#                         [[title],
+#                             [p, heating, lighting, kitchen, water, bathroom],
+#                         [range_slider],
+#                         [plot, legend]]))
 
-curdoc().add_root(
-    column(row(p, column(
+curdoc().add_root(column(title,
+    # row(title),
+    row(column(row(p, column(
         heating,
         lighting,
         kitchen,
@@ -258,6 +274,6 @@ curdoc().add_root(
     ),
     ),
         row(range_slider),
-        row(plot, legend)
-    )
-)
+        row(plot, legend))
+    )))
+
